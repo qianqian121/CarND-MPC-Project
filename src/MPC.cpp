@@ -32,6 +32,8 @@ const double Lf = 2.67;
 // The reference velocity is set to 40 mph.
 double ref_cte = 0;
 double ref_epsi = 0;
+// NOTE: feel free to play around with this
+// or do something completely different
 double ref_v = 40;
 
 // The solver takes all the state variables and actuator
@@ -67,12 +69,15 @@ class FG_eval {
       fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
     }
 
+    // Reference State Cost
     // Minimize the use of actuators.
     for (int i = 0; i < N - 1; i++) {
       fg[0] += CppAD::pow(vars[delta_start + i], 2);
       fg[0] += CppAD::pow(vars[a_start + i], 2);
     }
 
+    // TODO: Define the cost related the reference state and
+    // any anything you think may be beneficial.
     // Minimize the value gap between sequential actuations.
     for (int i = 0; i < N - 2; i++) {
       fg[0] += CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
@@ -124,6 +129,12 @@ class FG_eval {
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
       //
+      // NOTE: The use of `AD<double>` and use of `CppAD`!
+      // This is also CppAD can compute derivatives and pass
+      // these to the solver.
+
+      // TODO: Setup the rest of the model constraints
+	  
       // Recall the equations for the model:
       // x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
       // y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
@@ -308,6 +319,7 @@ int main() {
   ptsx << -100, 100;
   ptsy << -1, -1;
 
+  // TODO: fit a polynomial to the above x and y coordinates
   // The polynomial is fitted to a straight line so a polynomial with
   // order 1 is sufficient.
   auto coeffs = polyfit(ptsx, ptsy, 1);
