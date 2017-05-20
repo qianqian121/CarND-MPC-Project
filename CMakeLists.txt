@@ -1,6 +1,6 @@
 project(MPC)
 
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required (VERSION 2.8)
 
 # -g allows for gdb debugging
 # turn on -03 for best performance
@@ -25,5 +25,5 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_executable(mpc ${sources})
 
-target_link_libraries(mpc ipopt z ssl uv uWS)
+target_link_libraries(mpc ipopt z ssl uv uWS python2.7)
 
