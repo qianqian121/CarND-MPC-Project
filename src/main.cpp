@@ -65,6 +65,9 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
   return result;
 }
 
+const double dt = 0.1;
+const double Lf = 2.67;
+
 int main() {
   uWS::Hub h;
 
@@ -87,8 +90,8 @@ int main() {
           // j[1] is the data JSON object
           vector<double> ptsx = j[1]["ptsx"];
           vector<double> ptsy = j[1]["ptsy"];
-          double px = j[1]["x"];
-          double py = j[1]["y"];
+          double x = j[1]["x"];
+          double y = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
@@ -98,8 +101,47 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
+          for (int i = 0; i < ptsx.size(); i++ )
+          {
+            //rotate the difference between the waypoints and the car position by -psi.
+            double diff_x = ptsx[i]-x;
+            double diff_y = ptsy[i]-y;
+            ptsx[i] = (diff_x *cos(-psi)-diff_y*sin(-psi));
+            ptsy[i] = (diff_x *sin(-psi)+diff_y*cos(-psi));
+          }
+
+          double steer_value = j[1]["steering_angle"];;
+          double throttle_value = j[1]["throttle"];;
+
+          // The polynomial is fitted to a curve line so a polynomial with
+          // order 3 is sufficient.
+          Eigen::Map<Eigen::VectorXd> ptsx_ev(ptsx.data(), ptsx.size());
+          Eigen::Map<Eigen::VectorXd> ptsy_ev(ptsy.data(),ptsy.size());
+          auto coeffs = polyfit(ptsx_ev, ptsy_ev, 3);
+
+          // The cross track error is calculated by evaluating at polynomial at x, f(x)
+          // and subtracting y.
+          double cte = polyeval(coeffs, 0);
+          // Due to the sign starting at 0, the orientation error is -f'(x).
+          // derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
+          double epsi = -atan(coeffs[1]);
+
+          //transition from t to t+1 (time step is delta_t = 0.1)
+          double next_x = v * dt;
+          double next_y = 0;
+          double next_psi = -v * steer_value / Lf * dt;
+          double next_v = v + throttle_value * dt;
+          double next_cte = cte + v * sin(epsi) * dt;
+          double next_epsi = epsi-v * steer_value /Lf * dt;
+
+          Eigen::VectorXd state(6);
+          state << next_x, next_y, next_psi, next_v, next_cte, next_epsi;
+
+          auto vars = mpc.Solve(state, coeffs);
+
+          steer_value = vars[vars.size() - 2];
+          throttle_value = vars[vars.size() - 1];
+//          throttle_value = 0.1;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
@@ -111,6 +153,16 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
+          for (int i = 0; i < vars.size() - 2; i++){
+            // x result
+            if(i % 2 == 0){
+              mpc_x_vals.push_back(vars[i]);
+            }
+            //y result
+            else{
+              mpc_y_vals.push_back(vars[i]);
+            }
+          }
 
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
@@ -121,6 +173,10 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
+          for(int i = 0; i<ptsx.size();i++){
+            next_x_vals.push_back(ptsx[i]);
+            next_y_vals.push_back(ptsy[i]);
+          }
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
