@@ -71,10 +71,59 @@ More information is only accessible by people who are already enrolled in Term 2
 of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/b1ff3be0-c904-438e-aad3-2b5379f0e0c3/concepts/1a2255a0-e23c-44cf-8d41-39b8a3c8264a)
 for instructions and the project rubric.
 
-## Hints!
+## Model
 
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
+Bicycle Kinematic Model is used.
+![Constraint](images/model.png "constraint")
+
+The upper and lower limits of steering angle are set to -25 and 25 degree.
+
+Here is the MPC algorithm:
+
+*Setup:
+
+1. Define the length of the trajectory, N, and duration of each timestep, dt.
+2. Define vehicle dynamics and actuator limitations along with other constraints.
+3. Define the cost function.
+
+*Loop:
+
+1. We pass the current state as the initial state to the model predictive controller.
+2. We call the optimization solver. Given the initial state, the solver will return the vector of control inputs that minimizes the cost function. The solver we'll use is called Ipopt.
+3. We apply the first control input to the vehicle.
+4. Back to 1.
+
+In a real car, an actuation command won't execute instantly - there will be a delay as the command propagates through the system. A realistic delay might be on the order of 100 milliseconds.
+
+This is a problem called "latency", and it's a difficult challenge for some controllers - like a PID controller - to overcome. But a Model Predictive Controller can adapt quite well because we can model this latency in the system.
+
+## Tuning MPC
+N is set to 10 and dt is set to 0.1
+
+Define the components of the cost function:
+```
+    // The part of the cost based on the reference state.
+    for (int i = 0; i < N; i++) {
+      fg[0] += 1500*CppAD::pow(vars[cte_start + i] - ref_cte, 2);
+      fg[0] += 1200*CppAD::pow(vars[epsi_start + i] - ref_epsi, 2);
+      fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
+    }
+
+    // Reference State Cost
+    // Minimize the use of actuators.
+    for (int i = 0; i < N - 1; i++) {
+      fg[0] += 1*CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 1*CppAD::pow(vars[a_start + i], 2);
+    }
+
+    // TODO: Define the cost related the reference state and
+    // any anything you think may be beneficial.
+    // Minimize the value gap between sequential actuations.
+    for (int i = 0; i < N - 2; i++) {
+      fg[0] += 5*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 1*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+    }
+```
 
 ## Call for IDE Profiles Pull Requests
 
