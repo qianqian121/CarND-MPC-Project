@@ -98,7 +98,7 @@ In a real car, an actuation command won't execute instantly - there will be a de
 This is a problem called "latency", and it's a difficult challenge for some controllers - like a PID controller - to overcome. But a Model Predictive Controller can adapt quite well because we can model this latency in the system.
 
 
-####Required Changes
+#### Required Changes
 
 A detailed explanation of the whole model is needed in the README.md file. The submission should include an explanation of:
 
@@ -109,7 +109,7 @@ Suggestions and Comments
 
 Consider answering the following questions.
 
-#####Which variables are included in the state vector?
+##### Which variables are included in the state vector?
 
 The vehicle state vector includes:
 - x: position of the vehicle in the forward direction
@@ -119,7 +119,7 @@ The vehicle state vector includes:
 - cte: cross track error
 - epsi: yaw angle error
 
-#####How was the state gotten from the simulator measurements?
+##### How was the state gotten from the simulator measurements?
 - simulator measurements contains track trajectory waypoints, yaw angle, position of the vehicle in map cooridnate, vehicle speed, steering angle and throttle
 - track trajectory is converted to car cooridnates for convenient calculation
 ```
@@ -147,7 +147,7 @@ The vehicle state vector includes:
     // derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
     double epsi = -atan(coeffs[1]);
 ```
-#####How were the actuators(throttle and steering angle) calculated and what is the reason for using such calculations?
+##### How were the actuators(throttle and steering angle) calculated and what is the reason for using such calculations?
 Steering angle (δ) is in range [-25,25] deg. 
 
 For simplicity the throttle and brake represented as a singular actuator (a), with negative values signifying braking and positive values signifying acceleration. It should be in range [-1,1].
@@ -157,7 +157,7 @@ Actuators: [δ,a]
 MPC model predicts the vehicle movement using a simlified bycicle model. The goal is to optimize next N state of vehicle as close as the track trajectory. Each state the actuators values are calculated to minimize the pre-defined cost function which blance errors of off track and smooth actuactor actions to make passenges comfortable. 
 
 After the optimization evaluation, the first state steering angle and throttle value are returned for vehicle control.
-#####How did submission implement update equations for mpc model?
+##### How did submission implement update equations for mpc model?
 The kinematic model can predict the state on the next time step by taking into account the current state and actuators as follows:
 
 Kinematic model
@@ -170,7 +170,7 @@ Erroers update model
 ![Constraint](images/error_state.png "constraint")
 
 
-####Required Changes
+#### Required Changes
 
 The submission needs to describe the procedure used in:
 
@@ -180,17 +180,17 @@ Suggestions and Comments
 
 Consider answering the following questions:
 
-#####How and why were the waypoints converted to vehicle coordinate?
+##### How and why were the waypoints converted to vehicle coordinate?
 refer to the answers above.
-#####why was a third order polynomial fitted to waypoints to get coefficients?
+##### why was a third order polynomial fitted to waypoints to get coefficients?
 A third order polynomial is good enough for the track where there are series turns. For high way where there is smooth curvature - a 2nd order polynomial is good enough.
-#####How were the state values obtained?
+##### How were the state values obtained?
 refer to the answers above.
 
 
-####Required Changes
+#### Required Changes
 
-#####The submission needs to add a description on how the problem of 100ms latency was dealt with. This includes any implementation that enabled the vehicle to predict the state 100ms into the future.
+##### The submission needs to add a description on how the problem of 100ms latency was dealt with. This includes any implementation that enabled the vehicle to predict the state 100ms into the future.
 Future state of the vehicle by 100 ms latency is passed to the optimization solver. It helps to reduce negative effects of the latency and increase stability of the controller. The latency was introduced to compensate real delay of physical actuators in a car which is about 100ms in common. 
 ## Tuning MPC
 N is set to 10 and dt is set to 0.1
