@@ -97,8 +97,111 @@ In a real car, an actuation command won't execute instantly - there will be a de
 
 This is a problem called "latency", and it's a difficult challenge for some controllers - like a PID controller - to overcome. But a Model Predictive Controller can adapt quite well because we can model this latency in the system.
 
+
+####Required Changes
+
+A detailed explanation of the whole model is needed in the README.md file. The submission should include an explanation of:
+
+The variables used in state vector and how they were computed
+How the actuators were obtained.
+How the update equations were used in estimation the state of the vehicle.
+Suggestions and Comments
+
+Consider answering the following questions.
+
+#####Which variables are included in the state vector?
+
+The vehicle state vector includes:
+- x: position of the vehicle in the forward direction
+- y: position of the vehicle in the lateral direction
+- psi: yaw angle or orientation of the vehicle
+- v: speed of the vehicle
+- cte: cross track error
+- epsi: yaw angle error
+
+#####How was the state gotten from the simulator measurements?
+- simulator measurements contains track trajectory waypoints, yaw angle, position of the vehicle in map cooridnate, vehicle speed, steering angle and throttle
+- track trajectory is converted to car cooridnates for convenient calculation
+```
+    //rotate the difference between the waypoints and the car position by -psi.
+    double diff_x = ptsx[i]-x;
+    double diff_y = ptsy[i]-y;
+    ptsx[i] = (diff_x *cos(-psi)-diff_y*sin(-psi));
+    ptsy[i] = (diff_x *sin(-psi)+diff_y*cos(-psi));
+    std::cout << "tele pos " << ptsx[i] << ", " << ptsy[i] << std::endl;
+```
+- the measured track trajectory is fitted by a third order polynomial
+```
+    // The polynomial is fitted to a curve line so a polynomial with
+    // order 3 is sufficient.
+    Eigen::Map<Eigen::VectorXd> ptsx_ev(ptsx.data(), ptsx.size());
+    Eigen::Map<Eigen::VectorXd> ptsy_ev(ptsy.data(),ptsy.size());
+    auto coeffs = polyfit(ptsx_ev, ptsy_ev, 3);
+```
+- the cross track error and yaw angle error are caluclated from simualtion measurements - position of vehicle off the fitted trajectory
+```
+    // The cross track error is calculated by evaluating at polynomial at x, f(x)
+    // and subtracting y.
+    double cte = polyeval(coeffs, 0);
+    // Due to the sign starting at 0, the orientation error is -f'(x).
+    // derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
+    double epsi = -atan(coeffs[1]);
+```
+#####How were the actuators(throttle and steering angle) calculated and what is the reason for using such calculations?
+Steering angle (δ) is in range [-25,25] deg. 
+
+For simplicity the throttle and brake represented as a singular actuator (a), with negative values signifying braking and positive values signifying acceleration. It should be in range [-1,1].
+
+Actuators: [δ,a]
+
+MPC model predicts the vehicle movement using a simlified bycicle model. The goal is to optimize next N state of vehicle as close as the track trajectory. Each state the actuators values are calculated to minimize the pre-defined cost function which blance errors of off track and smooth actuactor actions to make passenges comfortable. 
+
+After the optimization evaluation, the first state steering angle and throttle value are returned for vehicle control.
+#####How did submission implement update equations for mpc model?
+The kinematic model can predict the state on the next time step by taking into account the current state and actuators as follows:
+
+Kinematic model
+![Constraint](images/model.png "constraint")
+where Lf measures the distance between the front of the vehicle and its center of gravity. The parameter was provided by Udacity.
+
+Errors: cross track error (cte) and ψ error (eψ) were used to build the cost function for the MPC. They could be updated on a new time step using the following equations:
+
+Erroers update model
+![Constraint](images/error_state.png "constraint")
+
+
+####Required Changes
+
+The submission needs to describe the procedure used in:
+
+preprocessing waypoints(i.e converting waypoints to vehicle coordinate and fitting a polynomial to converted values).
+preprocessing the vehicle state(how the state variable were gotten before calling the MPC model).
+Suggestions and Comments
+
+Consider answering the following questions:
+
+#####How and why were the waypoints converted to vehicle coordinate?
+refer to the answers above.
+#####why was a third order polynomial fitted to waypoints to get coefficients?
+A third order polynomial is good enough for the track where there are series turns. For high way where there is smooth curvature - a 2nd order polynomial is good enough.
+#####How were the state values obtained?
+refer to the answers above.
+
+
+####Required Changes
+
+#####The submission needs to add a description on how the problem of 100ms latency was dealt with. This includes any implementation that enabled the vehicle to predict the state 100ms into the future.
+Future state of the vehicle by 100 ms latency is passed to the optimization solver. It helps to reduce negative effects of the latency and increase stability of the controller. The latency was introduced to compensate real delay of physical actuators in a car which is about 100ms in common. 
 ## Tuning MPC
 N is set to 10 and dt is set to 0.1
+
+Time step duration (dt) was setted equal to the latancy of the simulation (0.1 s - 100 milli seconds). I tried smaller value such as 0.05 which has bad performance. I guess it is because the measurments trajectory gap is about 100ms, if the optimization step is too small, it causes overfit of the actuators which drives the vechile off the track.
+
+The measurement returns a trajectory of about 100 meters. From my experiments, the simulator speed is more like meters/second instead of miles/hour.
+So for the upper limit of speed value 100 meters/second, it requires 1 second for the vehicle to run 100 meters which matches the track trajectory from measurements.
+This is why N is 10.
+
+I may be wrong about this part. But my theory works well for my real application.
 
 Define the components of the cost function:
 ```
